@@ -15,6 +15,7 @@ int moveByButton = 3;
 const int ANIM_BUTTON = 1234;
 
 bool anim = false;
+HWND animButton;
 
 POINT speed{ 3, 2};
 
@@ -71,11 +72,6 @@ void animate()
 	actorRC.right += speed.x;
 	actorRC.top += speed.y;
 	actorRC.bottom += speed.y;
-
-	/*if (speed.x != 0 && speed.y != 0) {
-		speed.x = speed.x * 0.7;
-		speed.y = speed.y * 0.7;
-	}*/
 }
 
 void Update()
@@ -167,7 +163,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
-			HWND animButton = CreateWindow(
+			animButton = CreateWindow(
 				L"BUTTON",
 				L"Show Animation",
 				WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
@@ -189,6 +185,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case ANIM_BUTTON:
 			{
 				anim = !anim;
+				SendMessage(animButton, WM_SETTEXT, 0, (LPARAM)(anim ? L"Return Control" : L"Show Animation"));
 			}
 			break;
 			}
