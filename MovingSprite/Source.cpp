@@ -3,7 +3,10 @@ name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #include <Windows.h>
-#include <windowsx.h>
+#include <gdiplus.h>
+
+using namespace Gdiplus;
+#pragma comment (lib, "Gdiplus.lib")
 
 RECT actorRC{ 200, 200, 250, 250 };
 
@@ -20,7 +23,7 @@ const int ANIM_BUTTON = 1234;
 bool animMode = false;
 HWND animButton;
 
-POINT speed{ 3, 2};
+POINT speed{ 3, 2 };
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -33,6 +36,13 @@ bool isShift()
 
 void Show(HDC hdc)
 {
+	ULONG_PTR token;
+	GdiplusStartupInput input;
+	GdiplusStartup(&token, &input, 0);
+
+	Bitmap bitmap(L"actor.png");
+	UINT w = bitmap.GetWidth(), h = bitmap.GetHeight();
+
 	HDC memDC = CreateCompatibleDC(hdc);
 	HBITMAP memBM = CreateCompatibleBitmap(hdc, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top);
 	SelectObject(memDC, memBM);
@@ -40,10 +50,20 @@ void Show(HDC hdc)
 	HBRUSH hbrBkGnd = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
 	FillRect(memDC, &sceneRC, hbrBkGnd);
 
-	HBRUSH hbrActor = CreateSolidBrush(RGB(0, 99, 71));
-	FillRect(memDC, &actorRC, hbrActor);
+	HDC imgDC = CreateCompatibleDC(hdc);
+	HBITMAP imgBM;
+	bitmap.GetHBITMAP(GetSysColor(COLOR_WINDOW), &imgBM);
+
+	HBITMAP hPrevBmp = (HBITMAP)SelectObject(imgDC, imgBM);
+	StretchBlt(memDC, actorRC.left, actorRC.top, actorRC.right - actorRC.left, actorRC.bottom - actorRC.top, imgDC, 0, 0, w, h, SRCCOPY);
 
 	BitBlt(hdc, 0, animButtonHeight, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top, memDC, 0, 0, SRCCOPY);
+
+	SelectObject(memDC, hPrevBmp);
+
+	DeleteObject(hbrBkGnd);
+	DeleteObject(memBM);
+	DeleteDC(memDC);
 }
 
 void moveHor(int move)
@@ -98,7 +118,7 @@ void Update()
 	Show(hdc);
 }
 
-void GetDrawableRect(HWND hwnd)
+void GetSceneRect(HWND hwnd)
 {
 	GetClientRect(hwnd, &sceneRC);
 	sceneRC.bottom -= animButtonHeight;
@@ -150,9 +170,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdS
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		else {
-			Update();
-		}
+		Update();
 
 		Sleep(3);
 	}
@@ -166,7 +184,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
-			GetDrawableRect(hWnd);
+			GetSceneRect(hWnd);
 			animButton = CreateWindow(
 				L"BUTTON",
 				L"Show Animation",
@@ -187,7 +205,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case ANIM_BUTTON:
 			{
 				animMode = !animMode;
-				SendMessage(animButton, WM_SETTEXT, 0, (LPARAM)(animMode ? L"Return Control" : L"Show Animation"));
+				SendMessage(animButton, WM_SETTEXT, 0, (LPARAM)(animMode ? L"Return to Manual Control" : L"Show Animation"));
 			}
 			break;
 			}
@@ -195,7 +213,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		return 0;
 
 		case WM_SIZE: {
-			GetDrawableRect(hWnd);
+			GetSceneRect(hWnd);
 			SetWindowPos(animButton, nullptr, 0, 0, LOWORD(lParam), animButtonHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
 		}
 		return 0;
