@@ -33,14 +33,20 @@ void WinShow(HDC hdc)
 
 void moveHor(int move)
 {
-	actorRC.left += move;
-	actorRC.right += move;
+	if ((move > 0 && actorRC.right < windowRC.right) || (move < 0 && actorRC.left > windowRC.left))
+	{
+		actorRC.left += move;
+		actorRC.right += move;
+	}	
 }
 
 void moveVert(int move)
 {
-	actorRC.top += move;
-	actorRC.bottom += move;
+	if ((move > 0 && actorRC.bottom < windowRC.bottom) || (move < 0 && actorRC.top > windowRC.top))
+	{
+		actorRC.top += move;
+		actorRC.bottom += move;
+	}
 }
 
 void Update()
