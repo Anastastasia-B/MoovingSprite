@@ -2,10 +2,14 @@
 
 RECT actorRC{ 200, 200, 250, 250 };
 
-RECT windowRC{ 0, 0, 600, 600 };
+int winWidth = 600;
+int winHeight = 600;
+
+RECT clienRC;
+RECT windowRC{ 0, 0, winWidth, winHeight };
 HDC hdc;
 
-float moveByButton = 3;
+float moveByButton = 5;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -33,16 +37,16 @@ void WinShow(HDC hdc)
 
 void moveHor(int move)
 {
-	if ((move > 0 && actorRC.right < windowRC.right) || (move < 0 && actorRC.left > windowRC.left))
+	if ((move > 0 && actorRC.right < clienRC.right) || (move < 0 && actorRC.left > clienRC.left))
 	{
 		actorRC.left += move;
 		actorRC.right += move;
-	}	
+	}
 }
 
 void moveVert(int move)
 {
-	if ((move > 0 && actorRC.bottom < windowRC.bottom) || (move < 0 && actorRC.top > windowRC.top))
+	if ((move > 0 && actorRC.bottom < clienRC.bottom) || (move < 0 && actorRC.top > clienRC.top))
 	{
 		actorRC.top += move;
 		actorRC.bottom += move;
@@ -92,7 +96,9 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdS
 		WS_DLGFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZE,
 		(GetSystemMetrics(SM_CXSCREEN) - windowRC.right) / 2,
 		(GetSystemMetrics(SM_CYSCREEN) - windowRC.bottom) / 2,
-		windowRC.right, windowRC.bottom, nullptr, nullptr, nullptr, wc.hInstance);
+		winWidth,
+		winHeight,
+		nullptr, nullptr, nullptr, wc.hInstance);
 
 	if (hwnd == INVALID_HANDLE_VALUE)
 		return EXIT_FAILURE;
@@ -123,6 +129,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
+		case WM_CREATE:
+		{
+			GetClientRect(hWnd, &clienRC);
+			break;
+		}
+		return 0;
+
 		case WM_MOUSEWHEEL:
 		{
 			int move = GET_WHEEL_DELTA_WPARAM(wParam) / 20;
