@@ -16,6 +16,7 @@ RECT sceneRC;
 RECT windowRC{ 0, 0, 600, 500 };
 HDC hdc;
 
+float moveByMouseRate = 0.4;
 int moveByButton = 3;
 
 const int ANIM_BUTTON = 1234;
@@ -57,12 +58,10 @@ void ShowSprite(HDC hdc)
 	HBITMAP imgBM;
 	bitmap.GetHBITMAP(GetSysColor(COLOR_WINDOW), &imgBM);
 
-	HBITMAP hPrevBmp = (HBITMAP)SelectObject(imgDC, imgBM);
+	SelectObject(imgDC, imgBM);
 	StretchBlt(memDC, actorRC.left, actorRC.top, actorRC.right - actorRC.left, actorRC.bottom - actorRC.top, imgDC, 0, 0, w, h, SRCCOPY);
 
 	BitBlt(hdc, 0, buttonHeight, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top, memDC, 0, 0, SRCCOPY);
-
-	SelectObject(memDC, hPrevBmp);
 
 	DeleteObject(hbrBkGnd);
 	DeleteObject(memBM);
@@ -248,7 +247,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			case SPRITE_BUTTON:
 			{
 				spriteMode = !spriteMode;
-				SendMessage(spriteButton, WM_SETTEXT, 0, (LPARAM)(spriteMode ? L"To Sprite" : L"To Rectangle"));
+				SendMessage(spriteButton, WM_SETTEXT, 0, (LPARAM)(spriteMode ? L"To Rectangle" : L"To Sprite"));
 			}
 			break;
 			}
@@ -266,7 +265,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			if (!animMode)
 			{
-				int move = GET_WHEEL_DELTA_WPARAM(wParam) / 20;
+				int move = -GET_WHEEL_DELTA_WPARAM(wParam) * moveByMouseRate;
 				if (isShift()) {
 					moveHor(move);
 				}
