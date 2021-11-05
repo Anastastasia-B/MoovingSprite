@@ -10,7 +10,7 @@ using namespace Gdiplus;
 
 RECT actorRC{ 200, 200, 250, 250 };
 
-const int animButtonHeight = 40;
+const int buttonHeight = 40;
 
 RECT sceneRC;
 RECT windowRC{ 0, 0, 600, 500 };
@@ -19,9 +19,12 @@ HDC hdc;
 int moveByButton = 3;
 
 const int ANIM_BUTTON = 1234;
+const int SPRITE_BUTTON = 1235;
 
 bool animMode = false;
+bool spriteMode = false;
 HWND animButton;
+HWND spriteButton;
 
 POINT speed{ 3, 2 };
 
@@ -34,7 +37,7 @@ bool isShift()
 	return FALSE;
 }
 
-void Show(HDC hdc)
+void ShowSprite(HDC hdc)
 {
 	ULONG_PTR token;
 	GdiplusStartupInput input;
@@ -57,11 +60,31 @@ void Show(HDC hdc)
 	HBITMAP hPrevBmp = (HBITMAP)SelectObject(imgDC, imgBM);
 	StretchBlt(memDC, actorRC.left, actorRC.top, actorRC.right - actorRC.left, actorRC.bottom - actorRC.top, imgDC, 0, 0, w, h, SRCCOPY);
 
-	BitBlt(hdc, 0, animButtonHeight, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top, memDC, 0, 0, SRCCOPY);
+	BitBlt(hdc, 0, buttonHeight, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top, memDC, 0, 0, SRCCOPY);
 
 	SelectObject(memDC, hPrevBmp);
 
 	DeleteObject(hbrBkGnd);
+	DeleteObject(memBM);
+	DeleteDC(memDC);
+}
+
+void ShowRect(HDC hdc)
+{
+	HDC memDC = CreateCompatibleDC(hdc);
+	HBITMAP memBM = CreateCompatibleBitmap(hdc, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top);
+	SelectObject(memDC, memBM);
+
+	HBRUSH hbrBkGnd = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
+	FillRect(memDC, &sceneRC, hbrBkGnd);
+
+	HBRUSH hbrActor = CreateSolidBrush(RGB(200, 50, 100));
+	FillRect(memDC, &actorRC, hbrActor);
+
+	BitBlt(hdc, 0, buttonHeight, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top, memDC, 0, 0, SRCCOPY);
+
+	DeleteObject(hbrBkGnd);
+	DeleteObject(hbrActor);
 	DeleteObject(memBM);
 	DeleteDC(memDC);
 }
@@ -115,13 +138,16 @@ void Update()
 			moveVert(moveByButton);
 	}
 
-	Show(hdc);
+	if (spriteMode)
+		ShowSprite(hdc);
+	else
+		ShowRect(hdc);
 }
 
 void GetSceneRect(HWND hwnd)
 {
 	GetClientRect(hwnd, &sceneRC);
-	sceneRC.bottom -= animButtonHeight;
+	sceneRC.bottom -= buttonHeight;
 }
 
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdShow)
@@ -170,7 +196,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdS
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-		Update();
+		else
+			Update();
 
 		Sleep(3);
 	}
@@ -189,9 +216,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				L"BUTTON",
 				L"Show Animation",
 				WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-				0,	0,	animButtonHeight, animButtonHeight,
+				0,	0,	buttonHeight, sceneRC.right / 2,
 				hWnd,
 				reinterpret_cast<HMENU>(ANIM_BUTTON),
+				nullptr,
+				nullptr
+			);
+			spriteButton = CreateWindow(
+				L"BUTTON",
+				L"To Sprite",
+				WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+				sceneRC.right / 2, 0, buttonHeight, sceneRC.right / 2,
+				hWnd,
+				reinterpret_cast<HMENU>(SPRITE_BUTTON),
 				nullptr,
 				nullptr
 			);
@@ -208,13 +245,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				SendMessage(animButton, WM_SETTEXT, 0, (LPARAM)(animMode ? L"Return to Manual Control" : L"Show Animation"));
 			}
 			break;
+			case SPRITE_BUTTON:
+			{
+				spriteMode = !spriteMode;
+				SendMessage(spriteButton, WM_SETTEXT, 0, (LPARAM)(spriteMode ? L"To Sprite" : L"To Rectangle"));
+			}
+			break;
 			}
 		}
 		return 0;
 
 		case WM_SIZE: {
 			GetSceneRect(hWnd);
-			SetWindowPos(animButton, nullptr, 0, 0, LOWORD(lParam), animButtonHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+			SetWindowPos(animButton, nullptr, 0, 0, LOWORD(lParam) / 2, buttonHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+			SetWindowPos(spriteButton, nullptr, LOWORD(lParam) / 2, 0, LOWORD(lParam) / 2, buttonHeight, SWP_NOZORDER | SWP_NOOWNERZORDER);
 		}
 		return 0;
 
