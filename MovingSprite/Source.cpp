@@ -3,18 +3,17 @@
 
 RECT actorRC{ 200, 200, 250, 250 };
 
-int winWidth = 600;
-int winHeight = 600;
+const int animButtonHeight = 40;
 
 RECT sceneRC;
-RECT windowRC{ 0, 0, winWidth, winHeight };
+RECT windowRC{ 0, 0, 600, 500 };
 HDC hdc;
 
 int moveByButton = 3;
 
 const int ANIM_BUTTON = 1234;
 
-bool anim = false;
+bool animMode = false;
 HWND animButton;
 
 POINT speed{ 3, 2};
@@ -40,7 +39,7 @@ void Show(HDC hdc)
 	HBRUSH hbrActor = CreateSolidBrush(RGB(0, 99, 71));
 	FillRect(memDC, &actorRC, hbrActor);
 
-	BitBlt(hdc, 0, 60, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top, memDC, 0, 0, SRCCOPY);
+	BitBlt(hdc, 0, animButtonHeight, sceneRC.right - sceneRC.left, sceneRC.bottom - sceneRC.top, memDC, 0, 0, SRCCOPY);
 }
 
 void moveHor(int move)
@@ -76,7 +75,7 @@ void animate()
 
 void Update()
 {
-	if (anim)
+	if (animMode)
 	{
 		animate();
 	}
@@ -98,7 +97,7 @@ void Update()
 void GetDrawableRect(HWND hwnd)
 {
 	GetClientRect(hwnd, &sceneRC);
-	sceneRC.bottom -= 60;
+	sceneRC.bottom -= animButtonHeight;
 }
 
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdShow)
@@ -130,7 +129,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdS
 		WS_OVERLAPPEDWINDOW,
 		(GetSystemMetrics(SM_CXSCREEN) - windowRC.right) / 2,
 		(GetSystemMetrics(SM_CYSCREEN) - windowRC.bottom) / 2,
-		winWidth, winHeight, nullptr, nullptr, nullptr, wc.hInstance);
+		windowRC.right, windowRC.right, nullptr, nullptr, nullptr, wc.hInstance);
 
 	if (hwnd == INVALID_HANDLE_VALUE)
 		return EXIT_FAILURE;
@@ -163,18 +162,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
+			GetDrawableRect(hWnd);
 			animButton = CreateWindow(
 				L"BUTTON",
 				L"Show Animation",
 				WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-				10,	10,	150, 40,
+				0,	0,	animButtonHeight, animButtonHeight,
 				hWnd,
 				reinterpret_cast<HMENU>(ANIM_BUTTON),
 				nullptr,
 				nullptr
 			);
-
-			GetDrawableRect(hWnd);
 		}
 		return 0;
 
@@ -184,8 +182,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 			case ANIM_BUTTON:
 			{
-				anim = !anim;
-				SendMessage(animButton, WM_SETTEXT, 0, (LPARAM)(anim ? L"Return Control" : L"Show Animation"));
+				animMode = !animMode;
+				SendMessage(animButton, WM_SETTEXT, 0, (LPARAM)(animMode ? L"Return Control" : L"Show Animation"));
 			}
 			break;
 			}
@@ -194,12 +192,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case WM_SIZE: {
 			GetDrawableRect(hWnd);
+			SetWindowPos(animButton, nullptr, 0, 0, LOWORD(lParam), animButtonHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER);
 		}
 		return 0;
 
 		case WM_MOUSEWHEEL:
 		{
-			if (!anim)
+			if (!animMode)
 			{
 				int move = GET_WHEEL_DELTA_WPARAM(wParam) / 20;
 				if (isShift()) {
