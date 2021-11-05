@@ -1,8 +1,11 @@
 #include <Windows.h>
 
-RECT actorRC{ 0, 0, 50, 50 };
+RECT actorRC{ 200, 200, 250, 250 };
 
-RECT _windowRC{ 0, 0, 600, 600 };
+RECT windowRC{ 0, 0, 600, 600 };
+HDC hdc;
+
+float moveByButton = 3;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -16,16 +19,42 @@ bool isShift()
 void WinShow(HDC hdc)
 {
 	HDC memDC = CreateCompatibleDC(hdc);
-	HBITMAP memBM = CreateCompatibleBitmap(hdc, _windowRC.right - _windowRC.left, _windowRC.bottom - _windowRC.top);
+	HBITMAP memBM = CreateCompatibleBitmap(hdc, windowRC.right - windowRC.left, windowRC.bottom - windowRC.top);
 	SelectObject(memDC, memBM);
 
 	HBRUSH hbrBkGnd = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
-	FillRect(memDC, &_windowRC, hbrBkGnd);
+	FillRect(memDC, &windowRC, hbrBkGnd);
 
 	HBRUSH hbrActor = CreateSolidBrush(RGB(0, 99, 71));
 	FillRect(memDC, &actorRC, hbrActor);
 
-	BitBlt(hdc, 0, 0, _windowRC.right - _windowRC.left, _windowRC.bottom - _windowRC.top, memDC, 0, 0, SRCCOPY);
+	BitBlt(hdc, 0, 0, windowRC.right - windowRC.left, windowRC.bottom - windowRC.top, memDC, 0, 0, SRCCOPY);
+}
+
+void moveHor(int move)
+{
+	actorRC.left += move;
+	actorRC.right += move;
+}
+
+void moveVert(int move)
+{
+	actorRC.top += move;
+	actorRC.bottom += move;
+}
+
+void Update()
+{
+	if ((GetKeyState(VK_LEFT) & 0x8000) != 0)
+		moveHor(-moveByButton);
+	if ((GetKeyState(VK_RIGHT) & 0x8000) != 0)
+		moveHor(moveByButton);
+	if ((GetKeyState(VK_UP) & 0x8000) != 0)
+		moveVert(-moveByButton);
+	if ((GetKeyState(VK_DOWN) & 0x8000) != 0)
+		moveVert(moveByButton);
+
+	WinShow(hdc);
 }
 
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdShow)
@@ -48,31 +77,37 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR szCmdLine, int nCmdS
 	if (!RegisterClassEx(&wc))
 		return EXIT_FAILURE;
 
-	AdjustWindowRect(&_windowRC, WS_OVERLAPPEDWINDOW, false);
+	AdjustWindowRect(&windowRC, WS_OVERLAPPEDWINDOW, false);
 
 	hwnd = CreateWindowEx(
 		0,
 		wc.lpszClassName,
 		L"Mooving Sprite",
 		WS_DLGFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZE,
-		(GetSystemMetrics(SM_CXSCREEN) - _windowRC.right) / 2,
-		(GetSystemMetrics(SM_CYSCREEN) - _windowRC.bottom) / 2,
-		_windowRC.right, _windowRC.bottom, nullptr, nullptr, nullptr, wc.hInstance);
+		(GetSystemMetrics(SM_CXSCREEN) - windowRC.right) / 2,
+		(GetSystemMetrics(SM_CYSCREEN) - windowRC.bottom) / 2,
+		windowRC.right, windowRC.bottom, nullptr, nullptr, nullptr, wc.hInstance);
 
 	if (hwnd == INVALID_HANDLE_VALUE)
 		return EXIT_FAILURE;
 
-	HDC hdc = GetDC(hwnd);
+	hdc = GetDC(hwnd);
 
 	ShowWindow(hwnd, nCmdShow);
 	UpdateWindow(hwnd);
 
-	while (GetMessage(&msg, nullptr, 0, 0))
+	while (true)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		if (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) break;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		else {
+			Update();
+		}
 
-		WinShow(hdc);
+		Sleep(3);
 	}
 
 	return static_cast<int> (msg.wParam);
@@ -86,12 +121,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			int move = GET_WHEEL_DELTA_WPARAM(wParam) / 20;
 			if (isShift()) {
-				actorRC.left += move;
-				actorRC.right += move;
+				moveHor(move);
 			}
 			else {
-				actorRC.top += move;
-				actorRC.bottom += move;
+				moveVert(move);
 			}
 		}
 		return 0;
